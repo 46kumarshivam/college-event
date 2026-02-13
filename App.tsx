@@ -7,17 +7,33 @@ import { ManageEvents } from './components/ManageEvents';
 import { ParticipantsView } from './components/ParticipantsView';
 import { CertificatesView } from './components/CertificatesView';
 import { EventDetailsModal } from './components/EventDetailsModal';
-import { mockEvents, mockRegistrations } from './data/mockData';
 import { Event, Registration, UserRole } from './types';
 import { toast, Toaster } from 'sonner';
+import { getEvents, getRegistrations, addEvent, deleteEvent, registerUserForEvent } from './services/eventService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [userRole, setUserRole] = useState<UserRole>('student');
-  const [events, setEvents] = useState<Event[]>(mockEvents);
-  const [registrations, setRegistrations] = useState<Registration[]>(mockRegistrations);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [eventsData, regsData] = await Promise.all([getEvents(), getRegistrations()]);
+        setEvents(eventsData as Event[]);
+        setRegistrations(regsData as Registration[]);
+      } catch (error) {
+        toast.error('Failed to fetch data from Firebase');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleViewEventDetails = (event: Event) => {
     setSelectedEvent(event);
