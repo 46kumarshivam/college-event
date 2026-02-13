@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: college-event
+  labels:
+    app: backend
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1
+    spec:
+      serviceAccountName: backend-sa
+      
+      containers:
+      - name: backend
+        image: gcr.io/college-event-system-b712f/college-event-backend:latest
+        imagePullPolicy: Always
+        
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        
+        volumeMounts:
+        - name: firebase-secret
+          mountPath: /app/secrets
+          readOnly: true
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+      
+      volumes:
+      - name: firebase-secret
+        secret:
+          secretName: firebase-secret
+      
+      # Pod disruption budget
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - backend
+              topologyKey: kubernetes.io/hostname

@@ -1,0 +1,12 @@
+runtime: nodejs18
+
+env: standard
+
+entrypoint: node server.js
+
+env_variables:
+  PROJECT_ID: "college-event-system-b712f"
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10

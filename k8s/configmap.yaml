@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: college-event
+data:
+  NODE_ENV: "production"
+  PORT: "8080"
+  PROJECT_ID: "college-event-system-b712f"
