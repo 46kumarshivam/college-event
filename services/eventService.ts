@@ -2,22 +2,24 @@ import {
   collection, 
   getDocs, 
   addDoc, 
-  updateDoc, 
   deleteDoc, 
   doc, 
-  query, 
-  where,
   serverTimestamp,
   increment,
   runTransaction
 } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { db, isFirebaseConfigured } from './firebaseConfig';
 import { Event } from '../types';
+import { mockEvents, mockRegistrations } from '../data/mockData';
 
 const EVENTS_COLLECTION = 'events';
 const REGISTRATIONS_COLLECTION = 'registrations';
 
 export const getEvents = async () => {
+  if (!isFirebaseConfigured || !db) {
+    return mockEvents;
+  }
+
   const querySnapshot = await getDocs(collection(db, EVENTS_COLLECTION));
   return querySnapshot.docs.map(doc => ({ 
     id: doc.id, 
@@ -26,6 +28,10 @@ export const getEvents = async () => {
 };
 
 export const getRegistrations = async () => {
+  if (!isFirebaseConfigured || !db) {
+    return mockRegistrations;
+  }
+
   const querySnapshot = await getDocs(collection(db, REGISTRATIONS_COLLECTION));
   return querySnapshot.docs.map(doc => ({ 
     id: doc.id, 
@@ -34,6 +40,10 @@ export const getRegistrations = async () => {
 };
 
 export const addEvent = async (eventData: Omit<Event, 'id'>) => {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase is not configured. Set VITE_FIREBASE_* variables in Vercel to enable creating events.');
+  }
+
   const docRef = await addDoc(collection(db, EVENTS_COLLECTION), {
     ...eventData,
     registered: 0,
@@ -43,10 +53,18 @@ export const addEvent = async (eventData: Omit<Event, 'id'>) => {
 };
 
 export const deleteEvent = async (id: string) => {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase is not configured. Set VITE_FIREBASE_* variables in Vercel to enable deleting events.');
+  }
+
   await deleteDoc(doc(db, EVENTS_COLLECTION, id));
 };
 
 export const registerUserForEvent = async (eventId: string, registrationData: any) => {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase is not configured. Set VITE_FIREBASE_* variables in Vercel to enable registration.');
+  }
+
   const eventRef = doc(db, EVENTS_COLLECTION, eventId);
   const registrationRef = collection(db, REGISTRATIONS_COLLECTION);
 

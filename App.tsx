@@ -1,3 +1,5 @@
+const BACKEND_URL = "https://backend-869254969221.asia-south1.run.app";
+
 import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -7,13 +9,14 @@ import { ManageEvents } from './components/ManageEvents';
 import { ParticipantsView } from './components/ParticipantsView';
 import { CertificatesView } from './components/CertificatesView';
 import { EventDetailsModal } from './components/EventDetailsModal';
-import { Event, Registration, UserRole } from './types';
+import { Event, Registration, UserRole, User } from './types';
 import { toast, Toaster } from 'sonner';
 import { getEvents, getRegistrations, addEvent, deleteEvent, registerUserForEvent } from './services/eventService';
+import { Button } from './components/ui/button';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [userRole, setUserRole] = useState<UserRole>('student');
+  const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,19 +24,30 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [eventsData, regsData] = await Promise.all([getEvents(), getRegistrations()]);
-        setEvents(eventsData as Event[]);
-        setRegistrations(regsData as Registration[]);
-      } catch (error) {
-        toast.error('Failed to fetch data from Firebase');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    if (user) {
+      const fetchData = async () => {
+        try {
+          const [eventsData, regsData] = await Promise.all([getEvents(), getRegistrations()]);
+          setEvents(eventsData as Event[]);
+          setRegistrations(regsData as Registration[]);
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to fetch data from Firebase');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    }
+  }, [user]);
+
+  const handleLogin = (role: UserRole) => {
+    setUser({ role });
+    setActiveTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
 
   const handleViewEventDetails = (event: Event) => {
     setSelectedEvent(event);
@@ -63,8 +77,8 @@ export default function App() {
       const updatedEvents = await getEvents();
       setEvents(updatedEvents as Event[]);
       toast.success('Event created successfully');
-    } catch (error) {
-      toast.error('Failed to create event');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create event');
     }
   };
 
@@ -73,8 +87,8 @@ export default function App() {
       await deleteEvent(id);
       setEvents(events.filter(e => e.id !== id));
       toast.success('Event deleted successfully');
-    } catch (error) {
-      toast.error('Failed to delete event');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete event');
     }
   };
 
@@ -91,100 +105,78 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" richColors />
       
-      <Header userRole={userRole} onToggleSidebar={toggleSidebar} />
+      <Header userRole={user?.role} onToggleSidebar={toggleSidebar} onLogout={handleLogout} />
 
-      <div className="flex">
-        <Sidebar
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          userRole={userRole}
-          isOpen={sidebarOpen}
-        />
+      {user ? (
+        <div className="flex">
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            userRole={user.role}
+            isOpen={sidebarOpen}
+          />
 
-        <main className="flex-1 lg:ml-0">
-          <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
-            {/* Role Switcher - Demo only */}
-            <div className="mb-6 flex justify-end">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1 inline-flex gap-1">
-                <button
-                  onClick={() => {
-                    setUserRole('student');
-                    setActiveTab('dashboard');
-                  }}
-                  className={`px-4 py-2 rounded-md transition-colors text-body-small ${
-                    userRole === 'student'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Student View
-                </button>
-                <button
-                  onClick={() => {
-                    setUserRole('admin');
-                    setActiveTab('dashboard');
-                  }}
-                  className={`px-4 py-2 rounded-md transition-colors text-body-small ${
-                    userRole === 'admin'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Admin View
-                </button>
-              </div>
+          <main className="flex-1 lg:ml-0">
+            <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+              {/* Content */}
+              {activeTab === 'dashboard' && (
+                <Dashboard
+                  events={events}
+                  registrations={registrations}
+                  userRole={user.role}
+                />
+              )}
+
+              {user.role === 'student' && activeTab === 'events' && (
+                <EventsView
+                  events={events}
+                  onViewDetails={handleViewEventDetails}
+                />
+              )}
+
+              {user.role === 'student' && activeTab === 'my-registrations' && (
+                <ParticipantsView
+                  registrations={registrations}
+                />
+              )}
+
+              {user.role === 'student' && activeTab === 'certificates' && (
+                <CertificatesView
+                  registrations={registrations}
+                />
+              )}
+
+              {user.role === 'admin' && activeTab === 'manage-events' && (
+                <ManageEvents
+                  events={events}
+                  onAddEvent={handleAddEvent}
+                  onDeleteEvent={handleDeleteEvent}
+                />
+              )}
+
+              {user.role === 'admin' && activeTab === 'participants' && (
+                <ParticipantsView
+                  registrations={registrations}
+                />
+              )}
+
+              {user.role === 'admin' && activeTab === 'certificates' && (
+                <CertificatesView
+                  registrations={registrations}
+                />
+              )}
             </div>
-
-            {/* Content */}
-            {activeTab === 'dashboard' && (
-              <Dashboard
-                events={events}
-                registrations={registrations}
-                userRole={userRole}
-              />
-            )}
-
-            {userRole === 'student' && activeTab === 'events' && (
-              <EventsView
-                events={events}
-                onViewDetails={handleViewEventDetails}
-              />
-            )}
-
-            {userRole === 'student' && activeTab === 'my-registrations' && (
-              <ParticipantsView
-                registrations={registrations}
-              />
-            )}
-
-            {userRole === 'student' && activeTab === 'certificates' && (
-              <CertificatesView
-                registrations={registrations}
-              />
-            )}
-
-            {userRole === 'admin' && activeTab === 'manage-events' && (
-              <ManageEvents
-                events={events}
-                onAddEvent={handleAddEvent}
-                onDeleteEvent={handleDeleteEvent}
-              />
-            )}
-
-            {userRole === 'admin' && activeTab === 'participants' && (
-              <ParticipantsView
-                registrations={registrations}
-              />
-            )}
-
-            {userRole === 'admin' && activeTab === 'certificates' && (
-              <CertificatesView
-                registrations={registrations}
-              />
-            )}
+          </main>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-screen">
+          <h1 className="text-4xl font-bold mb-8">Welcome to the College Event Manager</h1>
+          <div className="flex gap-4">
+            <Button size="lg" onClick={() => handleLogin('student')}>Login as Student</Button>
+            <Button size="lg" variant="secondary" onClick={() => handleLogin('admin')}>Login as Admin</Button>
           </div>
-        </main>
-      </div>
+        </div>
+      )}
 
       {/* Event Details Modal */}
       {selectedEvent && (

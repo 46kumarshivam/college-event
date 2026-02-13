@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,6 +10,20 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+const requiredKeys: Array<keyof typeof firebaseConfig> = ['apiKey', 'projectId', 'appId'];
+const missingKeys = requiredKeys.filter((key) => !firebaseConfig[key]);
+
+export const isFirebaseConfigured = missingKeys.length === 0;
+
+let db: Firestore | null = null;
+
+if (isFirebaseConfigured) {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} else {
+  console.warn(
+    `[Firebase] Missing required environment variables: ${missingKeys.join(', ')}. Running in demo mode.`
+  );
+}
+
+export { db };

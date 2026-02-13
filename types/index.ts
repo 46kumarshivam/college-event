@@ -1,5 +1,9 @@
 export type UserRole = 'student' | 'admin';
 
+export interface User {
+  role: UserRole;
+}
+
 export interface Event {
   id: string;
   title: string;
